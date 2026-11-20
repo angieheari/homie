@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homie</title>
+<style>
+  :root { --bg:#fff6ea; --card:#fff; --ink:#3b2f2f; --muted:#8a7a6f; --brand:#ff8a5c; --good:#4cbf8b; --bad:#e85d5d; --line:#f0e1d0; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: ui-rounded, "Nunito", system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { margin:0; font-size:28px; }
+  h2 { font-size:15px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:28px 0 10px; }
+  .hero { display:flex; align-items:center; gap:16px; background:var(--card); border-radius:24px; padding:16px; border:2px solid var(--line); }
+  .hero svg { width:130px; flex:none; }
+  .bubble { font-size:16px; line-height:1.4; }
+  .bar { height:12px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:8px; }
+  .bar > div { height:100%; background:var(--brand); transition:width .4s; }
+  .stats { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .pill { background:#fff0e4; border-radius:99px; padding:4px 10px; font-size:13px; font-weight:700; }
+  .card { background:var(--card); border:2px solid var(--line); border-radius:18px; padding:14px; margin-bottom:10px; }
+  .card.late { border-color:var(--bad); }
+  .card.review { border-color:#f5c542; background:#fffbea; }
+  .row { display:flex; align-items:center; gap:10px; justify-content:space-between; flex-wrap:wrap; }
+  .title { font-weight:800; font-size:17px; }
+  .meta { color:var(--muted); font-size:13px; margin-top:2px; }
+  .dod { margin:10px 0 0; padding:10px; background:#faf5ee; border-radius:12px; }
+  .dod b { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .dod label { display:flex; gap:8px; align-items:center; padding:4px 0; cursor:pointer; }
+  button { font:inherit; font-weight:800; border:0; border-radius:12px; padding:8px 14px; cursor:pointer; background:var(--brand); color:#fff; }
+  button.ghost { background:#f3e8da; color:var(--ink); }
+  button.good { background:var(--good); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  input, select, textarea { font:inherit; padding:8px 10px; border:2px solid var(--line); border-radius:10px; background:#fff; width:100%; }
+  form.grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  form.grid .full { grid-column:1 / -1; }
+  .rank { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed var(--line); }
+  .dot { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:800; font-size:13px; flex:none; }
+  .empty { color:var(--muted); text-align:center; padding:16px; }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:99px; font-weight:700; opacity:0; transition:opacity .3s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  details summary { cursor:pointer; font-weight:800; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  @keyframes hop { 0%,100%{transform:translateY(0)} 30%{transform:translateY(-18px)} }
+  #mascot.happy svg { animation:bob 2.4s ease-in-out infinite; }
+  #mascot.cheer svg { animation:hop .6s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<main>
+  <div class="row"><h1>🏠 Homie</h1><span class="meta">your home, bossing you around</span></div>
+
+  <section class="hero" style="margin-top:14px">
+    <div id="mascot"></div>
+    <div style="flex:1">
+      <div class="bubble" id="say"></div>
+      <div class="bar"><div id="xpbar"></div></div>
+      <div class="stats" id="stats"></div>
+    </div>
+  </section>
+
+  <h2>Homie says do these 👉</h2>
+  <div id="todo"></div>
+
+  <h2>Homie is waiting on a double-check 🔍</h2>
+  <div id="review"></div>
+
+  <h2>Homie's favorites</h2>
+  <div class="card" id="board"></div>
+
+  <h2>Tell Homie about a chore</h2>
+  <form class="card grid" id="choreForm">
+    <input class="full" name="title" placeholder="Chore (e.g. Take out the trash)" required>
+    <select name="assignee" id="assigneeSel" required></select>
+    <input name="due" type="date" required>
+    <select name="points"><option value="5">⭐ 5 – quick</option><option value="10" selected>⭐ 10 – normal</option><option value="20">⭐ 20 – big</option></select>
+    <select name="repeat"><option value="once">Once</option><option value="daily">Every day</option><option value="weekly">Every week</option></select>
+    <textarea class="full" name="dod" rows="3" placeholder="How will Homie know it's done? One check per line&#10;Bag tied and in the outside bin&#10;New bag in the can" required></textarea>
+    <button class="full">Add chore</button>
+  </form>
+
+  <h2>Who lives with Homie?</h2>
+  <form class="card row" id="memberForm">
+    <input name="name" placeholder="Add someone Homie looks after" style="flex:1" required>
+    <button>Add</button>
+  </form>
+
+  <details class="card"><summary>Homie's proud-of-you list</summary><div id="log" style="margin-top:8px"></div></details>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'homie-v1';
+const COLORS = ['#ff8a5c','#5c9dff','#4cbf8b','#b86bff','#f5a623','#ff6b9d'];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const today = () => new Date().toISOString().slice(0, 10);
+const addDays = (d, n) => { const x = new Date(d + 'T12:00'); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+
+let S = JSON.parse(localStorage.getItem(KEY) || 'null') || { members: [], chores: [], log: [] };
+const save = () => { localStorage.setItem(KEY, JSON.stringify(S)); render(); };
+const member = id => S.members.find(m => m.id === id);
+
+// ---- game math ----
+const pts = m => S.log.filter(l => l.who === m.id).reduce((a, l) => a + l.points, 0);
+const total = () => S.log.reduce((a, l) => a + l.points, 0);
+const level = xp => Math.floor(Math.sqrt(xp / 15)) + 1;
+const levelStart = lv => 15 * (lv - 1) ** 2;
+function streak() { // consecutive days (ending today or yesterday) with at least one approved chore
+  const days = new Set(S.log.map(l => l.date));
+  let d = days.has(today()) ? today() : addDays(today(), -1), n = 0;
+  while (days.has(d)) { n++; d = addDays(d, -1); }
+  return n;
+}
+
+// ---- mascot ----
+function mascot(mood) {
+  const mouth = { happy:'M78 98 Q90 110 102 98', cheer:'M74 94 Q90 120 106 94 Z', sad:'M80 106 Q90 96 100 106', ok:'M82 102 L98 102' }[mood];
+  const eyes = mood === 'cheer'
+    ? '<path d="M64 84 Q72 74 80 84" stroke="#3b2f2f" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M100 84 Q108 74 116 84" stroke="#3b2f2f" stroke-width="4" fill="none" stroke-linecap="round"/>'
+    : '<circle cx="72" cy="84" r="6" fill="#3b2f2f"/><circle cx="108" cy="84" r="6" fill="#3b2f2f"/><circle cx="74" cy="82" r="2" fill="#fff"/><circle cx="110" cy="82" r="2" fill="#fff"/>';
+  const brow = mood === 'sad' ? '<path d="M62 70 L80 76 M118 70 L100 76" stroke="#3b2f2f" stroke-width="3" stroke-linecap="round"/>' : '';
+  const tear = mood === 'sad' ? '<path d="M66 94 q-4 8 0 10 q4 -2 0 -10z" fill="#7cc4ff"/>' : '';
+  const arms = mood === 'cheer'
+    ? '<path d="M34 100 Q18 80 26 62" stroke="#f2b27a" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M146 100 Q162 80 154 62" stroke="#f2b27a" stroke-width="8" fill="none" stroke-linecap="round"/>'
+    : '<path d="M34 108 Q20 114 22 126" stroke="#f2b27a" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M146 108 Q160 114 158 126" stroke="#f2b27a" stroke-width="8" fill="none" stroke-linecap="round"/>';
+  return `<svg viewBox="0 0 180 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Homie the house mascot, feeling ${mood}">
+    <ellipse cx="90" cy="158" rx="46" ry="7" fill="#000" opacity=".08"/>
+    ${arms}
+    <rect x="118" y="14" width="18" height="30" rx="4" fill="#c4553b"/>
+    <rect x="114" y="10" width="26" height="9" rx="4" fill="#a8452f"/>
+    <rect x="38" y="62" width="104" height="90" rx="22" fill="#ffe2b8" stroke="#f2b27a" stroke-width="4"/>
+    <path d="M18 70 L90 12 L162 70 Q164 78 154 78 L26 78 Q16 78 18 70Z" fill="#ff8a5c" stroke="#e5703f" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M44 62 Q90 40 136 62" stroke="#ffb28f" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>
+    ${eyes}${brow}${tear}
+    <ellipse cx="60" cy="98" rx="8" ry="5" fill="#ff9aa2" opacity=".7"/><ellipse cx="120" cy="98" rx="8" ry="5" fill="#ff9aa2" opacity=".7"/>
+    <path d="${mouth}" stroke="#3b2f2f" stroke-width="4" fill="${mood==='cheer'?'#ff7a7a':'none'}" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="76" y="124" width="28" height="28" rx="6" fill="#b98050"/><circle cx="98" cy="140" r="2.5" fill="#ffe2b8"/>
+    <rect x="46" y="116" width="20" height="18" rx="4" fill="#bfe6ff" stroke="#8cc7ee" stroke-width="2"/>
+    <rect x="114" y="116" width="20" height="18" rx="4" fill="#bfe6ff" stroke="#8cc7ee" stroke-width="2"/>
+  </svg>`;
+}
+
+// Homie hands chores out fairly: whoever has the fewest open chores, ties -> fewest points
+function pickFair() {
+  const open = m => S.chores.filter(c => c.assignee === m.id).length;
+  return [...S.members].sort((a, b) => open(a) - open(b) || pts(a) - pts(b))[0].id;
+}
+
+// ---- actions ----
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+
+function toggleDod(cid, i) {
+  const c = S.chores.find(c => c.id === cid); c.dod[i].checked = !c.dod[i].checked; save();
+}
+function submit(cid) {
+  const c = S.chores.find(c => c.id === cid);
+  if (!c.dod.every(d => d.checked)) return toast('Homie says: tick every box first!');
+  c.status = 'review';
+  if (S.members.length < 2) approve(cid, c.assignee); else save();
+}
+function approve(cid, byId) {
+  const c = S.chores.find(c => c.id === cid);
+  if (S.members.length > 1 && byId === c.assignee) return toast("Homie says: someone else has to check your work 😉");
+  const late = c.due < today();
+  const earned = late ? Math.ceil(c.points / 2) : c.points;
+  const before = level(total());
+  S.log.unshift({ id: uid(), title: c.title, who: c.assignee, by: byId, points: earned, late, date: today() });
+  if (c.repeat === 'once') S.chores = S.chores.filter(x => x.id !== cid);
+  else { c.status = 'todo'; c.due = addDays(c.due < today() ? today() : c.due, c.repeat === 'daily' ? 1 : 7); c.dod.forEach(d => d.checked = false); }
+  save();
+  toast(`+${earned} ⭐ ${late ? '(late: half points)' : 'Homie is proud!'}${level(total()) > before ? ' 🎉 LEVEL UP!' : ''}`);
+  burst();
+}
+function reject(cid) {
+  const c = S.chores.find(c => c.id === cid);
+  c.status = 'todo'; c.dod.forEach(d => d.checked = false); save(); toast('Homie says: not quite done yet');
+}
+function remove(cid) { if (confirm('Delete this chore?')) { S.chores = S.chores.filter(c => c.id !== cid); save(); } }
+function burst() { const m = $('mascot'); m.className = 'cheer'; setTimeout(render, 1500); }
+
+// ---- render ----
+function choreCard(c) {
+  const m = member(c.assignee), late = c.due < today() && c.status === 'todo';
+  const other = S.members.filter(x => x.id !== c.assignee);
+  if (c.status === 'todo') return `<div class="card ${late ? 'late' : ''}">
+    <div class="row"><div><div class="title">${esc(c.title)}</div>
+      <div class="meta">Homie needs <b>${esc(m ? m.name : '?')}</b> on this · ⭐ ${c.points} · ${late ? '⚠️ overdue!' : 'due ' + c.due}${c.repeat !== 'once' ? ' · 🔁 ' + c.repeat : ''}</div></div>
+      <button class="ghost" onclick="remove('${c.id}')">✕</button></div>
+    <div class="dod"><b>Homie says it's done when…</b>${c.dod.map((d, i) => `<label><input type="checkbox" style="width:auto" ${d.checked ? 'checked' : ''} onchange="toggleDod('${c.id}',${i})"> ${esc(d.text)}</label>`).join('')}</div>
+    <div style="margin-top:10px"><button class="good" ${c.dod.every(d => d.checked) ? '' : 'disabled'} onclick="submit('${c.id}')">Tell Homie it's done ✓</button></div></div>`;
+  return `<div class="card review"><div class="title">${esc(c.title)}</div>
+    <div class="meta">${esc(m ? m.name : '?')} says it's done. Homie doesn't take anyone's word for it · ⭐ ${c.points}</div>
+    <div class="dod"><b>Homie's checklist</b>${c.dod.map(d => `<div>✅ ${esc(d.text)}</div>`).join('')}</div>
+    <div style="margin-top:10px" class="row"><span class="meta">Homie asks someone else to check the list:</span>
+    <div>${other.map(o => `<button class="good" onclick="approve('${c.id}','${o.id}')">${esc(o.name)}: it's done 👍</button>`).join(' ')}
+    <button class="ghost" onclick="reject('${c.id}')">Homie says no</button></div></div></div>`;
+}
+
+function render() {
+  const xp = total(), lv = level(xp), lo = levelStart(lv), hi = levelStart(lv + 1);
+  const todo = S.chores.filter(c => c.status === 'todo'), rev = S.chores.filter(c => c.status === 'review');
+  const overdue = todo.filter(c => c.due < today()).length;
+  let mood = 'happy', say;
+  if (!S.members.length) { mood = 'ok'; say = "Hi, I'm Homie! I'll keep this place running. Tell me who lives here below and I'll start handing out chores."; }
+  else if (!S.chores.length) { mood = 'ok'; say = 'Nothing to do yet?! Tell me a chore and write my checklist so I know what "done" means.'; }
+  else if (overdue) { const c = todo.filter(c => c.due < today()).sort((a, b) => a.due.localeCompare(b.due))[0]; mood = 'sad'; say = `${member(c.assignee).name}, "${c.title}" is overdue and I'm feeling messy 🥺 Please do it now. (Half points, but I'll still be proud.)`; }
+  else if (!todo.length && !rev.length) { mood = 'cheer'; say = 'Everything is done! I feel sparkly. Good job, team ✨'; }
+  else if (!todo.length) { say = `Nice! Now I just need someone to double-check ${rev.length} chore${rev.length > 1 ? 's' : ''} 🔍`; }
+  else { const c = [...todo].sort((a, b) => a.due.localeCompare(b.due))[0]; say = `${member(c.assignee).name}, I need you to do "${c.title}"${c.due === today() ? ' today' : ' by ' + c.due}. Follow my checklist and I'll know it's done!`; }
+  if ($('mascot').className !== 'cheer' || mood === 'cheer') $('mascot').className = mood === 'cheer' ? 'cheer' : mood === 'happy' ? 'happy' : '';
+  $('mascot').innerHTML = mascot(mood);
+  $('say').textContent = say;
+  $('xpbar').style.width = Math.min(100, ((xp - lo) / (hi - lo)) * 100) + '%';
+  const st = streak();
+  $('stats').innerHTML = `<span class="pill">🏡 Level ${lv}</span><span class="pill">⭐ ${xp} XP (${hi - xp} to next)</span><span class="pill">🔥 ${st}-day streak</span>`;
+
+  $('todo').innerHTML = todo.length ? todo.sort((a, b) => a.due.localeCompare(b.due)).map(choreCard).join('') : '<div class="empty">Nothing to do 🎉</div>';
+  $('review').innerHTML = rev.length ? rev.map(choreCard).join('') : '<div class="empty">Nothing waiting for review</div>';
+
+  const ranked = [...S.members].sort((a, b) => pts(b) - pts(a));
+  $('board').innerHTML = ranked.length ? ranked.map((m, i) => `<div class="rank"><span>${['🥇','🥈','🥉'][i] || i + 1}</span><span class="dot" style="background:${m.color}">${esc(m.name[0].toUpperCase())}</span><b style="flex:1">${esc(m.name)}</b><span>⭐ ${pts(m)}</span></div>`).join('') : '<div class="empty">No housemates yet</div>';
+
+  $('assigneeSel').innerHTML = (S.members.length ? '<option value="auto">🏠 Let Homie decide</option>' : '') + S.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('') || '<option value="">Add someone first</option>';
+  $('log').innerHTML = S.log.slice(0, 30).map(l => `<div class="meta">${l.date} · ${esc(l.title)} — ${esc((member(l.who) || {name: '?'}).name)} +${l.points}${l.late ? ' (late)' : ''}</div>`).join('') || '<div class="meta">Nothing yet</div>';
+}
+
+$('choreForm').onsubmit = e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  if (!f.get('assignee')) return toast('Add a housemate first');
+  const dod = f.get('dod').split('\n').map(s => s.trim()).filter(Boolean).map(text => ({ text, checked: false }));
+  if (!dod.length) return toast('Write at least one "done" check');
+  S.chores.push({ id: uid(), title: f.get('title').trim(), assignee: f.get('assignee') === 'auto' ? pickFair() : f.get('assignee'), due: f.get('due'), points: +f.get('points'), repeat: f.get('repeat'), dod, status: 'todo' });
+  e.target.reset(); e.target.due.value = today(); save();
+};
+$('memberForm').onsubmit = e => {
+  e.preventDefault();
+  const name = e.target.name.value.trim(); if (!name) return;
+  S.members.push({ id: uid(), name, color: COLORS[S.members.length % COLORS.length] });
+  e.target.reset(); save();
+};
+$('choreForm').due.value = today();
+render();
+</script>
+</body>
+</html>
